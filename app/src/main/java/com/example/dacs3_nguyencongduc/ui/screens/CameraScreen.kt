@@ -1,6 +1,8 @@
 package com.example.dacs3_nguyencongduc.ui.screens
 
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -49,6 +51,15 @@ fun LocketCameraHome(onImageCaptured: (Any) -> Unit, onChatClick: () -> Unit = {
     var zoomRatio by remember { mutableFloatStateOf(1f) }
     var camera by remember { mutableStateOf<Camera?>(null) }
     var isFlashOn by remember { mutableStateOf(false) }
+
+    // Launcher chọn ảnh từ thư viện
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            onImageCaptured(uri)
+        }
+    }
 
     // PreviewView quan trọng nhất để lấy bitmap "ăn liền"
     val previewView = remember {
@@ -130,6 +141,9 @@ fun LocketCameraHome(onImageCaptured: (Any) -> Unit, onChatClick: () -> Unit = {
                 previewView.bitmap?.let { bitmap ->
                     onImageCaptured(bitmap)
                 }
+            },
+            onGalleryClick = {
+                galleryLauncher.launch("image/*")
             }
         )
     }
@@ -255,7 +269,8 @@ private fun CameraPreviewBox(
 private fun ShutterControls(
     isCapturing: Boolean,
     onCapturingChanged: (Boolean) -> Unit,
-    onCapture: () -> Unit
+    onCapture: () -> Unit,
+    onGalleryClick: () -> Unit
 ) {
     val scale by animateFloatAsState(
         if (isCapturing) 0.88f else 1f,
@@ -270,7 +285,16 @@ private fun ShutterControls(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Icon(Icons.Default.Image, null, tint = Color.White, modifier = Modifier.size(32.dp))
+        IconButton(onClick = onGalleryClick) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(Color.White.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Image, null, tint = Color.White, modifier = Modifier.size(24.dp))
+            }
+        }
 
         Box(
             modifier = Modifier
