@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "318244119782",
+    "project_id": "spocket-32351",
+    "storage_bucket": "spocket-32351.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:318244119782:android:8232eb8348eba0f2768727",
+        "android_client_info": {
+          "package_name": "com.example.dacs3_nguyencongduc"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFfOS-6HOyOvaseU9D_M4l6DdihCc5uVo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
