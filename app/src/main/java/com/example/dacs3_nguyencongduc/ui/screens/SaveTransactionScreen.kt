@@ -53,6 +53,20 @@ fun SaveTransactionScreen(
     var selectedDate by remember { mutableStateOf(System.currentTimeMillis()) }
     var showDatePicker by remember { mutableStateOf(false) }
 
+
+    LaunchedEffect(imageSource) {
+        val scanner = com.example.dacs3_nguyencongduc.utils.BillScanner
+        if (imageSource is android.graphics.Bitmap) {
+            scanner.scanBill(imageSource) { detectedAmount ->
+                if (detectedAmount != null) amount = detectedAmount.toLong().toString()
+            }
+        } else if (imageSource is android.net.Uri) {
+            scanner.scanBill(context, imageSource) { detectedAmount ->
+                if (detectedAmount != null) amount = detectedAmount.toLong().toString()
+            }
+        }
+    }
+
     if (showDatePicker) {
         val state = rememberDatePickerState(initialSelectedDateMillis = selectedDate)
         DatePickerDialog(
