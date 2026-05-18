@@ -15,6 +15,7 @@ import com.example.dacs3_nguyencongduc.data.*
 import com.example.dacs3_nguyencongduc.data.repository.TransactionRepository
 import com.example.dacs3_nguyencongduc.ui.screens.LoginScreen
 import com.example.dacs3_nguyencongduc.ui.screens.MainScreen
+import com.example.dacs3_nguyencongduc.ui.screens.SplashScreen
 import com.example.dacs3_nguyencongduc.viewmodel.*
 
 class MainActivity : ComponentActivity() {
@@ -35,19 +36,38 @@ class MainActivity : ComponentActivity() {
         setContent { 
             MaterialTheme { 
                 Surface {
+                    var showSplash by remember { mutableStateOf(true) }
                     val authState by authViewModel.authState.collectAsState()
 
                     AnimatedContent(
-                        targetState = authState is AuthState.Success,
+                        targetState = showSplash,
                         transitionSpec = {
-                            fadeIn(tween(300)) togetherWith fadeOut(tween(300))
+                            if (targetState) {
+                                // splash xuất hiện
+                                fadeIn(tween(200)) togetherWith fadeOut(tween(200))
+                            } else {
+                                // splash biến mất → login fade in nhẹ nhàng từ màu tím
+                                fadeIn(tween(600)) togetherWith fadeOut(tween(200))
+                            }
                         },
-                        label = "AuthTransition"
-                    ) { isAuthenticated ->
-                        if (isAuthenticated) {
-                            MainScreen(financeViewModel, authViewModel)
+                        label = "SplashTransition"
+                    ) { isSplash ->
+                        if (isSplash) {
+                            SplashScreen(onFinished = { showSplash = false })
                         } else {
-                            LoginScreen(authViewModel)
+                            AnimatedContent(
+                                targetState = authState is AuthState.Success,
+                                transitionSpec = {
+                                    fadeIn(tween(300)) togetherWith fadeOut(tween(300))
+                                },
+                                label = "AuthTransition"
+                            ) { isAuthenticated ->
+                                if (isAuthenticated) {
+                                    MainScreen(financeViewModel, authViewModel)
+                                } else {
+                                    LoginScreen(authViewModel)
+                                }
+                            }
                         }
                     }
                 } 

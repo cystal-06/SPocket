@@ -26,8 +26,8 @@ class FirebaseRepository {
     private val friendsCollection = firestore.collection("friends")
 
     // ── Current user ──
-    val currentUserId: String get() = auth.currentUser?.uid ?: "user_bypass_test_123"
-    val isLoggedIn: Boolean get() = true // Luôn true để test bypass
+    val currentUserId: String get() = auth.currentUser?.uid ?: ""
+    val isLoggedIn: Boolean get() = auth.currentUser != null
 
     // ══════════════════════════════════════════════
     // AUTH - Đăng nhập bằng số điện thoại (Phone OTP)
@@ -118,15 +118,17 @@ class FirebaseRepository {
      */
     fun getTransactionsFlow(): Flow<List<FirestoreTransaction>> = callbackFlow {
         val uid = currentUserId
-        if (uid == null) {
+        if (uid.isEmpty()) {
             trySend(emptyList())
             close()
             return@callbackFlow
         }
 
+        // Query theo UID thực + fallback uid cũ (bypass test) để không mất data cũ
+        val uidsToQuery = listOf(uid, "user_bypass_test_123")
+
         val listener = transactionsCollection
-            .whereEqualTo("userId", uid)
-            // Bỏ orderBy("date") để tránh lỗi Firestore Index, sort ở client
+            .whereIn("userId", uidsToQuery)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(emptyList())
@@ -142,7 +144,7 @@ class FirebaseRepository {
                         date = doc.getLong("date") ?: 0L,
                         imageUrl = doc.getString("imageUrl")
                     )
-                }?.sortedByDescending { it.date } ?: emptyList() // Sort thủ công bằng Kotlin
+                }?.sortedByDescending { it.date } ?: emptyList()
                 trySend(txList)
             }
 
