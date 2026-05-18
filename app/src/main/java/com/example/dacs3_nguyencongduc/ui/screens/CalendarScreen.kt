@@ -325,6 +325,16 @@ private fun GlassSummaryCard(
     }
 }
 
+private fun formatShortCurrency(amount: Double): String {
+    val absAmt = kotlin.math.abs(amount)
+    val sign = if (amount < 0) "-" else if (amount > 0) "+" else ""
+    return when {
+        absAmt >= 1_000_000 -> "${sign}${String.format(Locale.US, "%.1f", absAmt / 1_000_000).replace(".0", "")}tr"
+        absAmt >= 1_000 -> "${sign}${String.format(Locale.US, "%.0f", absAmt / 1_000)}k"
+        else -> "${sign}${absAmt.toInt()}"
+    }
+}
+
 @Composable
 private fun BigCalendarDayCell(
     day: Int,
@@ -334,92 +344,121 @@ private fun BigCalendarDayCell(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val border = when {
-        isSelected -> LocketPurple
-        isToday -> Color(0xFF66BB6A)
-        else -> Color.Transparent
-    }
-    val bg = when {
-        isSelected -> LocketPurple.copy(0.08f)
-        hasTx -> Color(0xFF161616)
-        else -> Color(0xFF111111)
-    }
-
     Column(
         Modifier
-            .clip(RoundedCornerShape(14.dp))
-            .border(
-                if (isToday || isSelected) 1.5.dp else 0.5.dp,
-                if (isToday || isSelected) border else Color.White.copy(0.04f),
-                RoundedCornerShape(14.dp)
-            )
-            .background(bg)
-            .clickable { onClick() },
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .background(if (isSelected) Color.White.copy(0.05f) else Color.Transparent, RoundedCornerShape(12.dp))
+            .padding(2.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Day number on top
-        Text(
-            day.toString(),
-            color = when {
-                isToday -> Color(0xFF66BB6A)
-                isSelected -> LocketPurple
-                hasTx -> Color.White
-                else -> Color.White.copy(0.25f)
-            },
-            fontSize = 12.sp,
-            fontWeight = if (isToday || isSelected) FontWeight.Bold else FontWeight.Medium,
-            modifier = Modifier.padding(top = 4.dp)
-        )
-
-        // Image / emoji area
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .padding(3.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFF1A1A1A)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (hasTx) {
-                val withImg = transactions.firstOrNull { it.imageUri != null }
-                if (withImg != null) {
-                    AsyncImage(
-                        model = withImg.imageUri,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                    // Count badge
-                    if (transactions.size > 1) {
-                        Box(
-                            Modifier.align(Alignment.TopEnd).padding(2.dp)
-                                .size(16.dp).background(LocketPurple, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("+${transactions.size - 1}", color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    // Bottom amount gradient
-                    Box(
-                        Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.75f))))
-                            .padding(horizontal = 2.dp, vertical = 1.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val sum = transactions.sumOf { if (it.type == "CHI") -it.amount else it.amount }
-                        Text(
-                            "${formatCurrency(kotlin.math.abs(sum))}",
-                            color = if (sum < 0) Color(0xFFFF6B6B) else Color(0xFF66BB6A),
-                            fontSize = 7.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1
+        if (hasTx) {
+            val imgList = transactions.filter { it.imageUri != null }.take(2)
+            
+            Box(
+                Modifier.fillMaxWidth().aspectRatio(1f)
+            ) {
+                if (imgList.isNotEmpty()) {
+                    // Back image (3D stacking)
+                    if (imgList.size > 1) {
+                        AsyncImage(
+                            model = imgList[1].imageUri,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(start = 6.dp, bottom = 6.dp)
+                                .clip(RoundedCornerShape(12.dp))
                         )
                     }
+                    // Front image
+                    AsyncImage(
+                        model = imgList[0].imageUri,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(
+                                end = if (imgList.size > 1) 6.dp else 0.dp,
+                                top = if (imgList.size > 1) 6.dp else 0.dp
+                            )
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(if (isToday) 2.dp else 0.dp, if (isToday) Color(0xFF66BB6A) else Color.Transparent, RoundedCornerShape(12.dp))
+                    )
                 } else {
-                    Text(getCategoryEmoji(transactions.first().category), fontSize = 18.sp)
+                    // Fallback to Emoji if no images
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(end = if (transactions.size > 1) 6.dp else 0.dp, top = if (transactions.size > 1) 6.dp else 0.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF1E1E1E))
+                            .border(if (isToday) 2.dp else 0.dp, if (isToday) Color(0xFF66BB6A) else Color.Transparent, RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(getCategoryEmoji(transactions.first().category), fontSize = 20.sp)
+                    }
+                }
+                
+                // Count Badge
+                if (transactions.size > 1) {
+                    Box(
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .size(18.dp)
+                            .background(Color(0xFFD500F9), CircleShape)
+                            .border(1.dp, Color.Black, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("${transactions.size}", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
+            
+            Spacer(Modifier.height(4.dp))
+            
+            // Date below image
+            Text(
+                day.toString(),
+                color = if (isToday) Color(0xFF66BB6A) else Color.White,
+                fontSize = 13.sp,
+                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium
+            )
+            
+            // Amount below date
+            val sum = transactions.sumOf { if (it.type == "CHI") -it.amount else it.amount }
+            Text(
+                formatShortCurrency(sum),
+                color = if (sum < 0) Color(0xFFFF5252) else Color(0xFF4CAF50),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium
+            )
+            
+        } else {
+            // Empty State
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF131313))
+                    .border(if (isToday) 2.dp else 0.dp, if (isToday) Color(0xFF66BB6A) else Color.Transparent, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Add, null, tint = Color.White.copy(0.05f), modifier = Modifier.size(24.dp))
+            }
+            
+            Spacer(Modifier.height(4.dp))
+            
+            Text(
+                day.toString(),
+                color = if (isToday) Color(0xFF66BB6A) else Color.White.copy(0.3f),
+                fontSize = 13.sp,
+                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium
+            )
+            
+            // Invisible text to maintain height
+            Text(" ", fontSize = 10.sp)
         }
     }
 }
