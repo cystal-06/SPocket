@@ -18,6 +18,7 @@ import com.example.dacs3_nguyencongduc.ui.screens.MainScreen
 import com.example.dacs3_nguyencongduc.viewmodel.*
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Kích hoạt giao diện tràn viền và đặt màu thanh điều hướng thành đen
         enableEdgeToEdge(

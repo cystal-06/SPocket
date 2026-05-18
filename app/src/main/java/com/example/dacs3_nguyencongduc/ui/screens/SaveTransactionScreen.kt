@@ -20,9 +20,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,6 +36,48 @@ import com.example.dacs3_nguyencongduc.ui.theme.LocketPurple
 import com.example.dacs3_nguyencongduc.utils.formatCurrency
 import java.text.SimpleDateFormat
 import java.util.*
+
+/**
+ * VisualTransformation để thêm dấu chấm ngăn cách hàng nghìn (chuẩn VN) khi nhập tiền
+ */
+class ThousandSeparatorTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val originalText = text.text
+        if (originalText.isEmpty()) return TransformedText(text, OffsetMapping.Identity)
+
+        val out = StringBuilder()
+        for (i in originalText.indices) {
+            out.append(originalText[i])
+            val remainingDigits = originalText.length - 1 - i
+            if (remainingDigits > 0 && remainingDigits % 3 == 0) {
+                out.append('.')
+            }
+        }
+
+        val transformedText = out.toString()
+
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                if (offset <= 0) return 0
+                val realOffset = offset.coerceAtMost(originalText.length)
+                val remainingDigits = originalText.length - realOffset
+                val dotsAfter = if (remainingDigits > 0) (remainingDigits + 2) / 3 - 1 else 0
+                val totalDots = (originalText.length - 1) / 3
+                val dotsBefore = totalDots - dotsAfter
+                return realOffset + dotsBefore
+            }
+
+            override fun transformedToOriginal(offset: Int): Int {
+                if (offset <= 0) return 0
+                val realOffset = offset.coerceAtMost(transformedText.length)
+                val dotsBefore = transformedText.substring(0, realOffset).count { it == '.' }
+                return realOffset - dotsBefore
+            }
+        }
+
+        return TransformedText(AnnotatedString(transformedText), offsetMapping)
+    }
+}
 
 private val DEFAULT_CATEGORIES = listOf(
     "Ăn uống" to "🍜", "Đi lại" to "🚗", "Mua sắm" to "🛒",
@@ -198,6 +244,7 @@ private fun AmountInput(amount: String, onAmountChange: (String) -> Unit, transa
                 suffix = { if (amount.isNotEmpty()) Text("đ", color = amountColor, fontSize = 48.sp, fontWeight = FontWeight.ExtraBold) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true,
                 colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, cursorColor = amountColor),
+                visualTransformation = ThousandSeparatorTransformation(),
                 modifier = Modifier.fillMaxWidth()
             )
         }

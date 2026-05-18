@@ -164,19 +164,20 @@ fun DateRangeSelector() {
 @Composable
 fun SummaryCard(title: String, amount: String, color: Color, icon: ImageVector) {
     Surface(
-        modifier = Modifier.width(140.dp).height(100.dp),
+        modifier = Modifier.width(140.dp).wrapContentHeight(),
         color = Color(0xFF161616),
         shape = RoundedCornerShape(24.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
             Box(
                 modifier = Modifier.size(28.dp).background(color.copy(0.1f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(icon, null, tint = color, modifier = Modifier.size(16.dp))
             }
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(14.dp))
             Text(title, color = Color.Gray, fontSize = 13.sp)
+            Spacer(Modifier.height(2.dp))
             Text(amount, color = color, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
     }
