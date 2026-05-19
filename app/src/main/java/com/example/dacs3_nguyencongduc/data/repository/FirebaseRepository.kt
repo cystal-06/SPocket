@@ -1,6 +1,9 @@
 package com.example.dacs3_nguyencongduc.data.repository
 
+import com.google.firebase.auth.FacebookAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.OAuthProvider
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -41,6 +44,41 @@ class FirebaseRepository {
             val result = auth.signInWithCredential(credential).await()
             val uid = result.user?.uid ?: throw Exception("Không lấy được UID")
             Result.success(uid)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // ── SOCIAL AUTH (Google, Facebook, Twitter) ──
+    
+    suspend fun signInWithGoogle(idToken: String): Result<String> {
+        return try {
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            val result = auth.signInWithCredential(credential).await()
+            Result.success(result.user?.uid ?: throw Exception("Lỗi đăng nhập Google"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun signInWithFacebook(accessToken: String): Result<String> {
+        return try {
+            val credential = FacebookAuthProvider.getCredential(accessToken)
+            val result = auth.signInWithCredential(credential).await()
+            Result.success(result.user?.uid ?: throw Exception("Lỗi đăng nhập Facebook"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun signInWithTwitter(accessToken: String, secret: String): Result<String> {
+        return try {
+            // Twitter sử dụng OAuthProvider trong Firebase mới
+            val credential = OAuthProvider.newCredentialBuilder("twitter.com")
+                .build() // Thực tế Twitter cần provider/activity nhưng ta có thể truyền credential nếu có token/secret
+            // Tạm thời Firebase Auth cho Twitter đã bị deprecate token/secret trực tiếp
+            // Thông thường sẽ gọi OAuthProvider từ Activity, đoạn này setup sẵn
+            Result.failure(Exception("Twitter Sign-In requires Activity Context. Implement via OAuthProvider in Activity."))
         } catch (e: Exception) {
             Result.failure(e)
         }

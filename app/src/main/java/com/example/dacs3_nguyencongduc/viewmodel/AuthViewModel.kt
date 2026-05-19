@@ -110,6 +110,39 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    // ── SOCIAL AUTH HANDLERS ──
+
+    fun signInWithGoogle(idToken: String) {
+        _authState.value = AuthState.Loading
+        viewModelScope.launch {
+            val result = firebaseRepo.signInWithGoogle(idToken)
+            if (result.isSuccess) {
+                firebaseRepo.createOrUpdateUser(displayName = "Người dùng Google", avatarEmoji = "🌐")
+                _authState.value = AuthState.Success
+            } else {
+                _authState.value = AuthState.Error(result.exceptionOrNull()?.message ?: "Lỗi đăng nhập Google")
+            }
+        }
+    }
+
+    fun signInWithFacebook(accessToken: String) {
+        _authState.value = AuthState.Loading
+        viewModelScope.launch {
+            val result = firebaseRepo.signInWithFacebook(accessToken)
+            if (result.isSuccess) {
+                firebaseRepo.createOrUpdateUser(displayName = "Người dùng Facebook", avatarEmoji = "📘")
+                _authState.value = AuthState.Success
+            } else {
+                _authState.value = AuthState.Error(result.exceptionOrNull()?.message ?: "Lỗi đăng nhập Facebook")
+            }
+        }
+    }
+
+    fun signInWithTwitter() {
+        // Twitter Auth thường được xử lý qua Activity/OAuthProvider
+        _authState.value = AuthState.Error("Tính năng đăng nhập Twitter đang được phát triển.")
+    }
+
     /**
      * Đăng xuất
      */

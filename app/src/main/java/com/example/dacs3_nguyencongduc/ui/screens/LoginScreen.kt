@@ -52,7 +52,7 @@ fun LoginScreen(authViewModel: AuthViewModel) {
     val isOtpStep  = authState is AuthState.CodeSent
     val isLoading  = authState is AuthState.Loading
 
-    var phoneNumber     by remember { mutableStateOf("+84") }
+    var phoneNumber     by remember { mutableStateOf("") }
     var otpCode         by remember { mutableStateOf("") }
     var password        by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -72,62 +72,61 @@ fun LoginScreen(authViewModel: AuthViewModel) {
         label = "logoPulse"
     )
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(Color(0xFF0D0D0F), Color(0xFF120818), Color(0xFF0D0D0F))))
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-        // ── Logo + App name (top center) ──
-        Column(
+        // ── Logo + App name (Căn giữa tự động trong khoảng trống còn lại) ──
+        Box(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 72.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxWidth()
+                .weight(1f), // Lấy toàn bộ không gian phía trên form
+            contentAlignment = Alignment.Center
         ) {
-            androidx.compose.foundation.Canvas(
-                modifier = Modifier
-                    .size(80.dp)
-                    .scale(logoScale)
-            ) {
-                val w = size.width; val h = size.height
-                // Glow
-                drawCircle(
-                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                        listOf(Color(0xFFBB86FC).copy(0.28f), Color.Transparent),
-                        center = Offset(w / 2f, h * 0.62f), radius = w * 0.80f
-                    ),
-                    radius = w * 0.80f, center = Offset(w / 2f, h * 0.62f)
-                )
-                // Drop body
-                val path = androidx.compose.ui.graphics.Path().apply {
-                    val cx = w / 2f; val tipY = h * 0.03f
-                    val bodyTop = h * 0.28f; val botY = h * 0.78f; val r = w * 0.44f
-                    moveTo(cx, tipY)
-                    cubicTo(cx - w * 0.05f, h * 0.16f, cx - r, bodyTop, cx - r, botY)
-                    cubicTo(cx - r, botY + r, cx + r, botY + r, cx + r, botY)
-                    cubicTo(cx + r, bodyTop, cx + w * 0.05f, h * 0.16f, cx, tipY)
-                    close()
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .scale(logoScale)
+                ) {
+                    val w = size.width; val h = size.height
+                    drawCircle(
+                        brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                            listOf(Color(0xFFBB86FC).copy(0.28f), Color.Transparent),
+                            center = Offset(w / 2f, h * 0.62f), radius = w * 0.80f
+                        ),
+                        radius = w * 0.80f, center = Offset(w / 2f, h * 0.62f)
+                    )
+                    val path = androidx.compose.ui.graphics.Path().apply {
+                        val cx = w / 2f; val tipY = h * 0.03f
+                        val bodyTop = h * 0.28f; val botY = h * 0.78f; val r = w * 0.44f
+                        moveTo(cx, tipY)
+                        cubicTo(cx - w * 0.05f, h * 0.16f, cx - r, bodyTop, cx - r, botY)
+                        cubicTo(cx - r, botY + r, cx + r, botY + r, cx + r, botY)
+                        cubicTo(cx + r, bodyTop, cx + w * 0.05f, h * 0.16f, cx, tipY)
+                        close()
+                    }
+                    drawPath(path, androidx.compose.ui.graphics.Brush.linearGradient(
+                        listOf(Color(0xFFBB86FC), Color(0xFF9D4EDD), Color(0xFF6A0DAD)),
+                        start = Offset(w / 2f, 0f), end = Offset(w / 2f, h)
+                    ))
+                    val hi = androidx.compose.ui.graphics.Path().apply {
+                        val cx2 = w * 0.38f; val cy2 = h * 0.28f
+                        moveTo(cx2, cy2)
+                        cubicTo(cx2 - w*0.07f, cy2+h*0.06f, cx2+w*0.04f, cy2+h*0.13f, cx2+w*0.09f, cy2+h*0.03f)
+                        cubicTo(cx2+w*0.09f, cy2-h*0.04f, cx2+w*0.03f, cy2-h*0.05f, cx2, cy2)
+                        close()
+                    }
+                    drawPath(hi, Color.White.copy(0.32f))
                 }
-                drawPath(path, androidx.compose.ui.graphics.Brush.linearGradient(
-                    listOf(Color(0xFFBB86FC), Color(0xFF9D4EDD), Color(0xFF6A0DAD)),
-                    start = Offset(w / 2f, 0f), end = Offset(w / 2f, h)
-                ))
-                // Highlight
-                val hi = androidx.compose.ui.graphics.Path().apply {
-                    val cx2 = w * 0.38f; val cy2 = h * 0.28f
-                    moveTo(cx2, cy2)
-                    cubicTo(cx2 - w*0.07f, cy2+h*0.06f, cx2+w*0.04f, cy2+h*0.13f, cx2+w*0.09f, cy2+h*0.03f)
-                    cubicTo(cx2+w*0.09f, cy2-h*0.04f, cx2+w*0.03f, cy2-h*0.05f, cx2, cy2)
-                    close()
-                }
-                drawPath(hi, Color.White.copy(0.32f))
-            }
 
-            Spacer(Modifier.height(14.dp))
-            Text("Spocket", color = LTextPri, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
-            Text("AI Expense Tracker", color = LPurpleLight.copy(0.7f), fontSize = 13.sp)
+                Spacer(Modifier.height(14.dp))
+                Text("Spocket", color = LTextPri, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
+                Text("AI Expense Tracker", color = LPurpleLight.copy(0.7f), fontSize = 13.sp)
+            }
         }
 
         // ── Login form slides up from bottom ──
@@ -136,35 +135,28 @@ fun LoginScreen(authViewModel: AuthViewModel) {
             enter = slideInVertically(
                 initialOffsetY = { it },
                 animationSpec = spring(dampingRatio = 0.78f, stiffness = 260f)
-            ) + fadeIn(tween(400)),
-            modifier = Modifier.align(Alignment.BottomCenter)
+            ) + fadeIn(tween(400))
+            // Không cần Modifier.align vì nó nằm trong Column
         ) {
             Surface(
                 color = LCardBg,
-                shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp)
+                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+                modifier = Modifier.fillMaxWidth().wrapContentHeight()
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 28.dp, vertical = 28.dp),
+                        .wrapContentHeight()
+                        .padding(horizontal = 24.dp, vertical = 24.dp), // Padding vừa phải
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     // Handle bar
-                    Box(
-                        Modifier
-                            .width(44.dp).height(5.dp)
-                            .background(LTextDim.copy(0.5f), CircleShape)
-                    )
+                    Box(Modifier.width(40.dp).height(4.dp).background(LTextDim.copy(0.4f), CircleShape))
 
                     Text(
                         if (isOtpStep) "Nhập mã OTP" else "Đăng nhập",
-                        color = LTextPri, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold
-                    )
-                    Text(
-                        if (isOtpStep) "Mã 6 số đã gửi đến $phoneNumber" else "Chào mừng trở lại 👋",
-                        color = LTextSec, fontSize = 14.sp
+                        color = LTextPri, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold
                     )
 
                     AnimatedContent(
@@ -175,55 +167,54 @@ fun LoginScreen(authViewModel: AuthViewModel) {
                         },
                         label = "formStep"
                     ) { isOtp ->
-                        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             if (!isOtp) {
-                                // Phone field
+                                // Username field
                                 OutlinedTextField(
                                     value = phoneNumber,
                                     onValueChange = { phoneNumber = it },
-                                    label = { Text("Số điện thoại", color = LTextDim, fontSize = 13.sp) },
-                                    leadingIcon = { Text("🇻🇳", fontSize = 20.sp, modifier = Modifier.padding(start = 4.dp)) },
+                                    label = { Text("Tài khoản", color = LTextDim, fontSize = 12.sp) },
+                                    leadingIcon = { Icon(Icons.Default.Person, null, tint = LPurple.copy(0.7f), modifier = Modifier.size(18.dp)) },
                                     singleLine = true,
-                                    shape = RoundedCornerShape(14.dp),
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                    shape = RoundedCornerShape(12.dp),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                                     colors = loginFieldColors(),
-                                    textStyle = TextStyle(color = LTextPri, fontSize = 15.sp, fontWeight = FontWeight.Medium),
+                                    textStyle = TextStyle(color = LTextPri, fontSize = 14.sp),
                                     modifier = Modifier.fillMaxWidth()
                                 )
                                 // Password field
                                 OutlinedTextField(
                                     value = password,
                                     onValueChange = { password = it },
-                                    label = { Text("Mật khẩu", color = LTextDim, fontSize = 13.sp) },
-                                    leadingIcon = { Icon(Icons.Default.Lock, null, tint = LPurple.copy(0.7f)) },
+                                    label = { Text("Mật khẩu", color = LTextDim, fontSize = 12.sp) },
+                                    leadingIcon = { Icon(Icons.Default.Lock, null, tint = LPurple.copy(0.7f), modifier = Modifier.size(18.dp)) },
                                     trailingIcon = {
                                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                             Icon(
                                                 if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                                null, tint = LPurple.copy(0.7f)
+                                                null, tint = LPurple.copy(0.7f), modifier = Modifier.size(18.dp)
                                             )
                                         }
                                     },
                                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                                     singleLine = true,
-                                    shape = RoundedCornerShape(14.dp),
+                                    shape = RoundedCornerShape(12.dp),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                                     colors = loginFieldColors(),
-                                    textStyle = TextStyle(color = LTextPri, fontSize = 15.sp),
+                                    textStyle = TextStyle(color = LTextPri, fontSize = 14.sp),
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             } else {
-                                // OTP field
                                 OutlinedTextField(
                                     value = otpCode,
                                     onValueChange = { otpCode = it },
-                                    label = { Text("Mã OTP", color = LTextDim, fontSize = 13.sp) },
-                                    leadingIcon = { Icon(Icons.Default.Key, null, tint = LPurple.copy(0.7f)) },
+                                    label = { Text("Mã OTP 6 số", color = LTextDim, fontSize = 12.sp) },
+                                    leadingIcon = { Icon(Icons.Default.Key, null, tint = LPurple.copy(0.7f), modifier = Modifier.size(18.dp)) },
                                     singleLine = true,
-                                    shape = RoundedCornerShape(14.dp),
+                                    shape = RoundedCornerShape(12.dp),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     colors = loginFieldColors(),
-                                    textStyle = TextStyle(color = LTextPri, fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center),
+                                    textStyle = TextStyle(color = LTextPri, fontSize = 16.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center),
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
@@ -234,57 +225,59 @@ fun LoginScreen(authViewModel: AuthViewModel) {
                                     if (isOtpStep) authViewModel.verifyOtp(otpCode)
                                     else authViewModel.sendOtp(phoneNumber, context as android.app.Activity)
                                 },
-                                modifier = Modifier.fillMaxWidth().height(54.dp),
-                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = LPurple),
                                 enabled = !isLoading,
-                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
                             ) {
                                 if (isLoading) {
-                                    CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.5.dp)
+                                    CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
                                 } else {
-                                    Text(
-                                        if (isOtpStep) "Xác nhận" else "Log In",
-                                        fontSize = 16.sp, fontWeight = FontWeight.Bold
-                                    )
+                                    Text(if (isOtpStep) "Xác nhận" else "Log In", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
                     }
 
-                    // Terms
+                    // Terms (nhỏ gọn 1 dòng)
                     Text(
                         buildAnnotatedString {
-                            withStyle(SpanStyle(color = LTextDim, fontSize = 11.sp)) { append("By tapping Continue, you agree to our ") }
-                            withStyle(SpanStyle(color = LPurpleLight, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)) { append("Terms") }
-                            withStyle(SpanStyle(color = LTextDim, fontSize = 11.sp)) { append(" and our ") }
-                            withStyle(SpanStyle(color = LPurpleLight, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)) { append("Privacy Policy") }
-                            withStyle(SpanStyle(color = LTextDim, fontSize = 11.sp)) { append(".") }
+                            withStyle(SpanStyle(color = LTextDim, fontSize = 10.sp)) { append("Tiếp tục đồng nghĩa bạn đồng ý ") }
+                            withStyle(SpanStyle(color = LPurpleLight, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)) { append("Điều khoản") }
+                            withStyle(SpanStyle(color = LTextDim, fontSize = 10.sp)) { append(" & ") }
+                            withStyle(SpanStyle(color = LPurpleLight, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)) { append("Chính sách") }
                         },
-                        textAlign = TextAlign.Center, lineHeight = 16.sp
+                        textAlign = TextAlign.Center, lineHeight = 14.sp
                     )
 
                     // Divider
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        HorizontalDivider(Modifier.weight(1f), color = LTextDim.copy(0.25f))
-                        Text("  hoặc đăng nhập bằng  ", color = LTextDim, fontSize = 12.sp)
-                        HorizontalDivider(Modifier.weight(1f), color = LTextDim.copy(0.25f))
+                        HorizontalDivider(Modifier.weight(1f), color = LTextDim.copy(0.2f))
+                        Text("  hoặc  ", color = LTextDim, fontSize = 11.sp)
+                        HorizontalDivider(Modifier.weight(1f), color = LTextDim.copy(0.2f))
                     }
 
-                    // Social sign-in
+                    // Social sign-in (compact row)
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        SocialBtn("🍎", "Apple",    Color.White)
-                        SocialBtn("G",  "Google",   Color(0xFF4285F4))
-                        SocialBtn("f",  "Facebook", Color(0xFF1877F2))
+                        SocialBtn("G",  "Google",   Color(0xFF4285F4)) {
+                            android.widget.Toast.makeText(context, "Tính năng đang được thiết lập. Vui lòng xem hướng dẫn!", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                        SocialBtn("f",  "Facebook", Color(0xFF1877F2)) {
+                            android.widget.Toast.makeText(context, "Tính năng đang được thiết lập. Vui lòng xem hướng dẫn!", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                        SocialBtn("𝕏",  "Twitter",  Color(0xFFFFFFFF)) {
+                            android.widget.Toast.makeText(context, "Tính năng đang được thiết lập. Vui lòng xem hướng dẫn!", android.widget.Toast.LENGTH_SHORT).show()
+                        }
                     }
 
                     // Sign up link
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Chưa có tài khoản? ", color = LTextDim, fontSize = 13.sp)
-                        Text("Đăng ký", color = LPurpleLight, fontSize = 13.sp,
+                        Text("Chưa có tài khoản? ", color = LTextDim, fontSize = 12.sp)
+                        Text("Đăng ký", color = LPurpleLight, fontSize = 12.sp,
                             fontWeight = FontWeight.Bold, modifier = Modifier.clickable { })
                     }
                 }
@@ -306,9 +299,9 @@ private fun loginFieldColors() = OutlinedTextFieldDefaults.colors(
 )
 
 @Composable
-private fun SocialBtn(label: String, name: String, color: Color) {
+private fun SocialBtn(label: String, name: String, color: Color, onClick: () -> Unit = {}) {
     Surface(
-        onClick = {}, color = LCardBg,
+        onClick = onClick, color = LCardBg,
         shape = RoundedCornerShape(14.dp),
         border = androidx.compose.foundation.BorderStroke(0.8.dp, color.copy(0.3f))
     ) {
