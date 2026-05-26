@@ -20,20 +20,9 @@ class FinanceViewModel(private val localRepository: TransactionRepository) : Vie
     private val firebaseRepo = FirebaseRepository()
     private val cloudinaryRepo = CloudinaryRepository()
 
-    // Dữ liệu lấy trực tiếp từ Firebase (Real-time sync) nếu có mạng
-    val transactions = firebaseRepo.getTransactionsFlow().map { cloudList ->
-        cloudList.map { fTx ->
-            Transaction(
-                id = fTx.id.hashCode(), // Chuyển đổi String ID sang Int cho Room entity
-                title = fTx.title,
-                amount = fTx.amount,
-                type = fTx.type,
-                category = fTx.category,
-                date = fTx.date,
-                imageUri = fTx.imageUrl
-            )
-        }
-    }.stateIn(
+    // Dữ liệu lấy từ Room Database (Local) làm nguồn thật (Single Source of Truth)
+    // Điều này đảm bảo dữ liệu luôn hiện kể cả khi offline hoặc chưa đăng nhập
+    val transactions = localRepository.allTransactions.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
         emptyList()

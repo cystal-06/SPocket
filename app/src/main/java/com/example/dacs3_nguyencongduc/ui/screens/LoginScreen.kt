@@ -35,6 +35,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.dacs3_nguyencongduc.viewmodel.AuthState
 import com.example.dacs3_nguyencongduc.viewmodel.AuthViewModel
+import android.app.Activity
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.facebook.CallbackManager
+import com.facebook.FacebookCallback
+import com.facebook.FacebookException
+import com.facebook.login.LoginManager
+import com.facebook.login.LoginResult
 
 private val LDark        = Color(0xFF0D0D0F)
 private val LCardBg      = Color(0xFF1A1A1F)
@@ -49,13 +61,50 @@ private val LTextDim     = Color(0xFF606070)
 fun LoginScreen(authViewModel: AuthViewModel) {
     val context    = LocalContext.current
     val authState  by authViewModel.authState.collectAsState()
-    val isOtpStep  = authState is AuthState.CodeSent
     val isLoading  = authState is AuthState.Loading
 
-    var phoneNumber     by remember { mutableStateOf("") }
-    var otpCode         by remember { mutableStateOf("") }
-    var password        by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
+    var isRegister             by remember { mutableStateOf(false) }
+    var email                  by remember { mutableStateOf("") }
+    var password               by remember { mutableStateOf("") }
+    var confirmPassword        by remember { mutableStateOf("") }
+    var displayName            by remember { mutableStateOf("") }
+    var passwordVisible        by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
+
+    // Google Sign-In Configuration
+    val googleSignInOptions = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(context.getString(com.example.dacs3_nguyencongduc.R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+    }
+    
+    val googleSignInClient = remember {
+        GoogleSignIn.getClient(context, googleSignInOptions)
+    }
+
+    val googleAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)!!
+                val idToken = account.idToken!!
+                authViewModel.signInWithGoogle(idToken)
+            } catch (e: ApiException) {
+                Toast.makeText(context, "Đăng nhập Google thất bại: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+
+    // Toast error notifications
+    LaunchedEffect(authState) {
+        if (authState is AuthState.Error) {
+            android.widget.Toast.makeText(context, (authState as AuthState.Error).message, android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
 
     // Slide-up form after short delay
     var showForm by remember { mutableStateOf(false) }
@@ -124,19 +173,18 @@ fun LoginScreen(authViewModel: AuthViewModel) {
                 }
 
                 Spacer(Modifier.height(14.dp))
-                Text("Spocket", color = LTextPri, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
+                Text("SPocket", color = LTextPri, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
                 Text("AI Expense Tracker", color = LPurpleLight.copy(0.7f), fontSize = 13.sp)
             }
         }
 
-        // ── Login form slides up from bottom ──
+        // ── Login/Register form slides up from bottom ──
         AnimatedVisibility(
             visible = showForm,
             enter = slideInVertically(
                 initialOffsetY = { it },
                 animationSpec = spring(dampingRatio = 0.78f, stiffness = 260f)
             ) + fadeIn(tween(400))
-            // Không cần Modifier.align vì nó nằm trong Column
         ) {
             Surface(
                 color = LCardBg,
@@ -146,8 +194,8 @@ fun LoginScreen(authViewModel: AuthViewModel) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .wrapContentHeight()
-                        .padding(horizontal = 24.dp, vertical = 24.dp), // Padding vừa phải
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp, vertical = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
@@ -155,48 +203,92 @@ fun LoginScreen(authViewModel: AuthViewModel) {
                     Box(Modifier.width(40.dp).height(4.dp).background(LTextDim.copy(0.4f), CircleShape))
 
                     Text(
-                        if (isOtpStep) "Nhập mã OTP" else "Đăng nhập",
+                        if (isRegister) "Đăng ký tài khoản" else "Đăng nhập",
                         color = LTextPri, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold
                     )
 
-                    AnimatedContent(
-                        targetState = isOtpStep,
-                        transitionSpec = {
-                            slideInHorizontally { it } + fadeIn() togetherWith
-                                    slideOutHorizontally { -it } + fadeOut()
-                        },
-                        label = "formStep"
-                    ) { isOtp ->
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            if (!isOtp) {
-                                // Username field
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        // Smoothly animate the Tên hiển thị field at the top when Registering
+                        AnimatedVisibility(
+                            visible = isRegister,
+                            enter = expandVertically(animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                            exit = shrinkVertically(animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                        ) {
+                            Column {
                                 OutlinedTextField(
-                                    value = phoneNumber,
-                                    onValueChange = { phoneNumber = it },
-                                    label = { Text("Tài khoản", color = LTextDim, fontSize = 12.sp) },
+                                    value = displayName,
+                                    onValueChange = { displayName = it },
+                                    label = { Text("Tên hiển thị", color = LTextDim, fontSize = 12.sp) },
                                     leadingIcon = { Icon(Icons.Default.Person, null, tint = LPurple.copy(0.7f), modifier = Modifier.size(18.dp)) },
                                     singleLine = true,
                                     shape = RoundedCornerShape(12.dp),
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                                     colors = loginFieldColors(),
                                     textStyle = TextStyle(color = LTextPri, fontSize = 14.sp),
                                     modifier = Modifier.fillMaxWidth()
                                 )
-                                // Password field
+                                Spacer(Modifier.height(10.dp))
+                            }
+                        }
+
+                        // Email field (Always shown)
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            label = { Text("Tài khoản Email", color = LTextDim, fontSize = 12.sp) },
+                            leadingIcon = { Icon(Icons.Default.Email, null, tint = LPurple.copy(0.7f), modifier = Modifier.size(18.dp)) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                            colors = loginFieldColors(),
+                            textStyle = TextStyle(color = LTextPri, fontSize = 14.sp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Password field (Always shown)
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            label = { Text("Mật khẩu", color = LTextDim, fontSize = 12.sp) },
+                            leadingIcon = { Icon(Icons.Default.Lock, null, tint = LPurple.copy(0.7f), modifier = Modifier.size(18.dp)) },
+                            trailingIcon = {
+                                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                    Icon(
+                                        if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        null, tint = LPurple.copy(0.7f), modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            },
+                            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            colors = loginFieldColors(),
+                            textStyle = TextStyle(color = LTextPri, fontSize = 14.sp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Smoothly animate the Nhập lại mật khẩu field at the bottom when Registering
+                        AnimatedVisibility(
+                            visible = isRegister,
+                            enter = expandVertically(animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                            exit = shrinkVertically(animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                        ) {
+                            Column {
+                                Spacer(Modifier.height(10.dp))
                                 OutlinedTextField(
-                                    value = password,
-                                    onValueChange = { password = it },
-                                    label = { Text("Mật khẩu", color = LTextDim, fontSize = 12.sp) },
+                                    value = confirmPassword,
+                                    onValueChange = { confirmPassword = it },
+                                    label = { Text("Nhập lại mật khẩu", color = LTextDim, fontSize = 12.sp) },
                                     leadingIcon = { Icon(Icons.Default.Lock, null, tint = LPurple.copy(0.7f), modifier = Modifier.size(18.dp)) },
                                     trailingIcon = {
-                                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                        IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
                                             Icon(
-                                                if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                                if (confirmPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                                                 null, tint = LPurple.copy(0.7f), modifier = Modifier.size(18.dp)
                                             )
                                         }
                                     },
-                                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                    visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                                     singleLine = true,
                                     shape = RoundedCornerShape(12.dp),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -204,43 +296,51 @@ fun LoginScreen(authViewModel: AuthViewModel) {
                                     textStyle = TextStyle(color = LTextPri, fontSize = 14.sp),
                                     modifier = Modifier.fillMaxWidth()
                                 )
-                            } else {
-                                OutlinedTextField(
-                                    value = otpCode,
-                                    onValueChange = { otpCode = it },
-                                    label = { Text("Mã OTP 6 số", color = LTextDim, fontSize = 12.sp) },
-                                    leadingIcon = { Icon(Icons.Default.Key, null, tint = LPurple.copy(0.7f), modifier = Modifier.size(18.dp)) },
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(12.dp),
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    colors = loginFieldColors(),
-                                    textStyle = TextStyle(color = LTextPri, fontSize = 16.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
                             }
+                        }
 
-                            // CTA Button
-                            Button(
-                                onClick = {
-                                    if (isOtpStep) authViewModel.verifyOtp(otpCode)
-                                    else authViewModel.sendOtp(phoneNumber, context as android.app.Activity)
-                                },
-                                modifier = Modifier.fillMaxWidth().height(48.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = LPurple),
-                                enabled = !isLoading,
-                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
-                            ) {
-                                if (isLoading) {
-                                    CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
-                                } else {
-                                    Text(if (isOtpStep) "Xác nhận" else "Log In", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(4.dp))
+
+                        // Submit Button
+                        Button(
+                            onClick = {
+                                if (email.isBlank() || password.isBlank()) {
+                                    android.widget.Toast.makeText(context, "Vui lòng điền đầy đủ thông tin", android.widget.Toast.LENGTH_SHORT).show()
+                                    return@Button
                                 }
+                                if (isRegister) {
+                                    if (displayName.isBlank() || confirmPassword.isBlank()) {
+                                        android.widget.Toast.makeText(context, "Vui lòng điền đầy đủ thông tin", android.widget.Toast.LENGTH_SHORT).show()
+                                        return@Button
+                                    }
+                                    if (password != confirmPassword) {
+                                        android.widget.Toast.makeText(context, "Mật khẩu xác nhận không khớp!", android.widget.Toast.LENGTH_SHORT).show()
+                                        return@Button
+                                    }
+                                    if (password.length < 6) {
+                                        android.widget.Toast.makeText(context, "Mật khẩu phải tối thiểu 6 ký tự!", android.widget.Toast.LENGTH_SHORT).show()
+                                        return@Button
+                                    }
+                                    authViewModel.signUpWithEmail(email, password, displayName)
+                                } else {
+                                    authViewModel.signInWithEmail(email, password)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = LPurple),
+                            enabled = !isLoading,
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                            } else {
+                                Text(if (isRegister) "Tạo tài khoản" else "Đăng nhập", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
 
-                    // Terms (nhỏ gọn 1 dòng)
+                    // Terms
                     Text(
                         buildAnnotatedString {
                             withStyle(SpanStyle(color = LTextDim, fontSize = 10.sp)) { append("Tiếp tục đồng nghĩa bạn đồng ý ") }
@@ -264,21 +364,51 @@ fun LoginScreen(authViewModel: AuthViewModel) {
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         SocialBtn("G",  "Google",   Color(0xFF4285F4)) {
-                            android.widget.Toast.makeText(context, "Tính năng đang được thiết lập. Vui lòng xem hướng dẫn!", android.widget.Toast.LENGTH_SHORT).show()
+                            googleAuthLauncher.launch(googleSignInClient.signInIntent)
                         }
                         SocialBtn("f",  "Facebook", Color(0xFF1877F2)) {
-                            android.widget.Toast.makeText(context, "Tính năng đang được thiết lập. Vui lòng xem hướng dẫn!", android.widget.Toast.LENGTH_SHORT).show()
+                            val mainActivity = context as? com.example.dacs3_nguyencongduc.MainActivity
+                            if (mainActivity != null) {
+                                val cb = CallbackManager.Factory.create()
+                                com.example.dacs3_nguyencongduc.MainActivity.callbackManager = cb
+                                LoginManager.getInstance().registerCallback(
+                                    cb,
+                                    object : FacebookCallback<LoginResult> {
+                                        override fun onSuccess(result: LoginResult) {
+                                            val token = result.accessToken.token
+                                            authViewModel.signInWithFacebook(token)
+                                        }
+                                        override fun onCancel() {
+                                            Toast.makeText(context, "Hủy đăng nhập Facebook", Toast.LENGTH_SHORT).show()
+                                        }
+                                        override fun onError(error: FacebookException) {
+                                            Toast.makeText(context, "Facebook thất bại: ${error.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                )
+                                LoginManager.getInstance().logInWithReadPermissions(
+                                    mainActivity,
+                                    listOf("email", "public_profile")
+                                )
+                            } else {
+                                Toast.makeText(context, "Không thể kết nối Facebook SDK", Toast.LENGTH_SHORT).show()
+                            }
                         }
                         SocialBtn("𝕏",  "Twitter",  Color(0xFFFFFFFF)) {
                             android.widget.Toast.makeText(context, "Tính năng đang được thiết lập. Vui lòng xem hướng dẫn!", android.widget.Toast.LENGTH_SHORT).show()
                         }
                     }
 
-                    // Sign up link
+                    // Toggle Link
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Chưa có tài khoản? ", color = LTextDim, fontSize = 12.sp)
-                        Text("Đăng ký", color = LPurpleLight, fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold, modifier = Modifier.clickable { })
+                        Text(if (isRegister) "Đã có tài khoản? " else "Chưa có tài khoản? ", color = LTextDim, fontSize = 12.sp)
+                        Text(
+                            if (isRegister) "Đăng nhập" else "Đăng ký",
+                            color = LPurpleLight,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable { isRegister = !isRegister }
+                        )
                     }
                 }
             }

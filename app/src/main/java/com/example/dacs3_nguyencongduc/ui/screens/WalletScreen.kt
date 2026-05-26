@@ -34,7 +34,7 @@ import java.util.*
 fun WalletScreen(transactions: List<Transaction>) {
     var selectedTab by remember { mutableStateOf("Expense") }
     
-    // Tính toán số liệu
+    // Tính toán số liệu thống kê thực tế
     val totalExpense = transactions.filter { it.type.equals("CHI", ignoreCase = true) }.sumOf { it.amount }
     val totalIncome = transactions.filter { it.type.equals("THU", ignoreCase = true) }.sumOf { it.amount }
     val remaining = totalIncome - totalExpense
@@ -64,7 +64,7 @@ fun WalletScreen(transactions: List<Transaction>) {
             .background(Color(0xFF0A0A0A))
             .statusBarsPadding()
     ) {
-        // Top Navigation: Date Range
+        // Lựa chọn khoảng thời gian (Date Range)
         DateRangeSelector()
 
         LazyColumn(
@@ -80,9 +80,9 @@ fun WalletScreen(transactions: List<Transaction>) {
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    SummaryCard("Expense", "-${formatCurrency(totalExpense)}", Color(0xFFFF5252), Icons.Default.ArrowOutward)
-                    SummaryCard("Income", formatCurrency(totalIncome), Color(0xFF4CAF50), Icons.Default.CallReceived)
-                    SummaryCard("Remaining", formatCurrency(remaining), Color(0xFF2196F3), Icons.Default.AccountBalanceWallet)
+                    SummaryCard("Chi tiêu", "-${formatCurrency(totalExpense)}", Color(0xFFFF5252), Icons.Default.ArrowOutward)
+                    SummaryCard("Thu nhập", formatCurrency(totalIncome), Color(0xFF4CAF50), Icons.Default.CallReceived)
+                    SummaryCard("Số dư còn lại", formatCurrency(remaining), Color(0xFF2196F3), Icons.Default.AccountBalanceWallet)
                 }
             }
 
@@ -99,7 +99,7 @@ fun WalletScreen(transactions: List<Transaction>) {
                         modifier = Modifier.padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Toggle Switch
+                        // Toggle Switch chuyển đổi chi tiêu/thu nhập
                         TabSwitcher(selectedTab) { selectedTab = it }
 
                         Spacer(Modifier.height(32.dp))
@@ -110,19 +110,19 @@ fun WalletScreen(transactions: List<Transaction>) {
                             
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = if (selectedTab == "Expense") "Total Expense:" else "Total Income:",
+                                    text = if (selectedTab == "Expense") "Tổng chi tiêu:" else "Tổng thu nhập:",
                                     color = Color.Gray,
                                     fontSize = 14.sp
                                 )
                                 Text(
-                                    text = if (selectedTab == "Expense") "-${formatCurrency(totalAmount)}" else formatCurrency(totalAmount),
+                                    text = if (selectedTab == "Expense") "-${formatCurrency(totalAmount)}" else "+${formatCurrency(totalAmount)}",
                                     color = if (selectedTab == "Expense") Color(0xFFFF5252) else Color(0xFF4CAF50),
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.ArrowDownward, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(16.dp))
-                                    Text(" 93% vs last week", color = Color(0xFF4CAF50), fontSize = 12.sp)
+                                    Text(" 93% so với tuần trước", color = Color(0xFF4CAF50), fontSize = 12.sp)
                                 }
                             }
                         }
@@ -130,9 +130,18 @@ fun WalletScreen(transactions: List<Transaction>) {
                         Spacer(Modifier.height(40.dp))
 
                         // Category List Breakdown
-                        categoryBreakdown.forEach { item ->
-                            CategoryItem(item)
-                            Spacer(Modifier.height(16.dp))
+                        if (categoryBreakdown.isEmpty()) {
+                            Text(
+                                "Chưa có dữ liệu giao dịch nào.",
+                                color = Color.Gray,
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(vertical = 20.dp)
+                            )
+                        } else {
+                            categoryBreakdown.forEach { item ->
+                                CategoryItem(item, selectedTab)
+                                Spacer(Modifier.height(16.dp))
+                            }
                         }
                     }
                 }
@@ -152,10 +161,10 @@ fun DateRangeSelector() {
     ) {
         IconButton(onClick = {}) { Icon(Icons.Default.ChevronLeft, null, tint = Color.White) }
         Text(
-            "6 Apr 2026 - 12 Apr 2026",
+            "Tuần này (06/04/2026 - 12/04/2026)",
             color = Color.White,
             fontWeight = FontWeight.SemiBold,
-            fontSize = 16.sp
+            fontSize = 15.sp
         )
         IconButton(onClick = {}) { Icon(Icons.Default.ChevronRight, null, tint = Color.White) }
     }
@@ -164,7 +173,7 @@ fun DateRangeSelector() {
 @Composable
 fun SummaryCard(title: String, amount: String, color: Color, icon: ImageVector) {
     Surface(
-        modifier = Modifier.width(140.dp).wrapContentHeight(),
+        modifier = Modifier.width(145.dp).wrapContentHeight(),
         color = Color(0xFF161616),
         shape = RoundedCornerShape(24.dp)
     ) {
@@ -191,8 +200,8 @@ fun TabSwitcher(selected: String, onSelected: (String) -> Unit) {
         shape = RoundedCornerShape(24.dp)
     ) {
         Row(modifier = Modifier.padding(4.dp)) {
-            TabItem("Expense", selected == "Expense", Color(0xFFFF5252), Icons.Default.ArrowOutward, Modifier.weight(1f)) { onSelected("Expense") }
-            TabItem("Income", selected == "Income", Color(0xFF4CAF50), Icons.Default.CallReceived, Modifier.weight(1f)) { onSelected("Income") }
+            TabItem("Khoản chi", selected == "Expense", Color(0xFFFF5252), Icons.Default.ArrowOutward, Modifier.weight(1f)) { onSelected("Expense") }
+            TabItem("Khoản thu", selected == "Income", Color(0xFF4CAF50), Icons.Default.CallReceived, Modifier.weight(1f)) { onSelected("Income") }
         }
     }
 }
@@ -245,7 +254,7 @@ fun DonutChart(data: List<CategorySummary>) {
 }
 
 @Composable
-fun CategoryItem(item: CategorySummary) {
+fun CategoryItem(item: CategorySummary, selectedTab: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
@@ -256,7 +265,12 @@ fun CategoryItem(item: CategorySummary) {
         Spacer(Modifier.width(12.dp))
         Text(item.category, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
         Text("${(item.percentage * 100).toInt()}%", color = Color.Gray, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 16.dp))
-        Text("-${formatCurrency(item.amount)}", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = if (selectedTab == "Expense") "-${formatCurrency(item.amount)}" else "+${formatCurrency(item.amount)}",
+            color = if (selectedTab == "Expense") Color(0xFFFF5252) else Color(0xFF4CAF50),
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -269,23 +283,37 @@ data class CategorySummary(
 )
 
 private fun getCategoryColor(cat: String): Color = when (cat) {
+    "Thuê nhà" -> Color(0xFFE91E63)
+    "Hiếu hỉ" -> Color(0xFFFF5722)
+    "Cafe" -> Color(0xFF795548)
     "Ăn uống" -> Color(0xFFFF9800)
-    "Đi lại" -> Color(0xFF2196F3)
-    "Mua sắm" -> Color(0xFFE91E63)
-    "Giải trí" -> Color(0xFF9C27B0)
+    "Đi chợ" -> Color(0xFF4CAF50)
+    "Điện/ Nước" -> Color(0xFFFFEB3B)
+    "Di chuyển" -> Color(0xFF2196F3)
+    "Xăng" -> Color(0xFF607D8B)
+    "Mua sắm" -> Color(0xFF9C27B0)
+    "Shoppee/ Tiktok" -> Color(0xFFFF5722)
+    "Du lịch" -> Color(0xFF00BCD4)
+    "Học tập" -> Color(0xFF3F51B5)
     "Lương" -> Color(0xFF4CAF50)
-    "Y tế" -> Color(0xFFF44336)
-    "Giáo dục" -> Color(0xFF00BCD4)
+    "Khác" -> Color(0xFF8BC34A)
     else -> Color(0xFF9E9E9E)
 }
 
 private fun getCategoryEmoji(cat: String): String = when (cat) {
-    "Ăn uống" -> "🍜"
-    "Đi lại" -> "🚗"
-    "Mua sắm" -> "🛒"
-    "Giải trí" -> "🎮"
+    "Thuê nhà" -> "🏠"
+    "Hiếu hỉ" -> "❤️"
+    "Cafe" -> "☕"
+    "Ăn uống" -> "🥐"
+    "Đi chợ" -> "🥦"
+    "Điện/ Nước" -> "💡"
+    "Di chuyển" -> "🛵"
+    "Xăng" -> "⛽"
+    "Mua sắm" -> "🛍️"
+    "Shoppee/ Tiktok" -> "🛵"
+    "Du lịch" -> "🛫"
+    "Học tập" -> "📚"
     "Lương" -> "💰"
-    "Y tế" -> "🏥"
-    "Giáo dục" -> "🎓"
+    "Khác" -> "💵"
     else -> "📦"
 }

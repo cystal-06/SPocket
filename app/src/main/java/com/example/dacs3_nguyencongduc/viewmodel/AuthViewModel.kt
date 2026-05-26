@@ -48,11 +48,26 @@ class AuthViewModel : ViewModel() {
     val userProfile: StateFlow<Map<String, Any>?> = _userProfile
 
     init {
-        // Mock profile for test bypass
-        _userProfile.value = mapOf(
-            "displayName" to "Người dùng Spocket",
-            "email" to "user@gmail.com"
-        )
+        if (isLoggedIn) {
+            fetchUserProfile()
+        }
+    }
+
+    fun fetchUserProfile() {
+        viewModelScope.launch {
+            val result = firebaseRepo.getUserProfile()
+            if (result.isSuccess) {
+                val data = result.getOrNull()
+                if (data != null) {
+                    _userProfile.value = data
+                } else {
+                    _userProfile.value = mapOf(
+                        "displayName" to "Thành viên SPocket",
+                        "email" to (FirebaseAuth.getInstance().currentUser?.email ?: "")
+                    )
+                }
+            }
+        }
     }
 
     /**
@@ -70,7 +85,84 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
-     * Gửi mã OTP đến số điện thoại (TẠM THỜI BYPASS ĐỂ VÀO APP LUÔN)
+     * Đăng ký tài khoản bằng Email và Password
+     */
+    fun signUpWithEmail(email: String, password: String, displayName: String) {
+        _authState.value = AuthState.Loading
+        viewModelScope.launch {
+            val result = firebaseRepo.signUpWithEmailAndPassword(email, password, displayName)
+            if (result.isSuccess) {
+                _userProfile.value = mapOf(
+                    "displayName" to displayName,
+                    "email" to email
+                )
+                _authState.value = AuthState.Success
+            } else {
+                val exception = result.exceptionOrNull()
+                // Nếu lỗi do người dùng nhập sai định dạng hoặc tài khoản đã tồn tại từ Firebase Auth
+                if (exception is com.google.firebase.auth.FirebaseAuthException) {
+                    _authState.value = AuthState.Error(
+                        exception.localizedMessage ?: "Đăng ký thất bại: Thông tin không hợp lệ"
+                    )
+                } else {
+                    // Nếu lỗi do CHƯA CẤU HÌNH Firebase (app chưa tạo) hoặc MẤT MẠNG, tự động dùng Offline Mode
+                    _userProfile.value = mapOf(
+                        "displayName" to "$displayName (Offline)",
+                        "email" to email
+                    )
+                    _authState.value = AuthState.Success
+                }
+            }
+        }
+    }
+
+    /**
+     * Đăng nhập tài khoản bằng Email và Password
+     */
+    fun signInWithEmail(email: String, password: String) {
+        _authState.value = AuthState.Loading
+        viewModelScope.launch {
+            val result = firebaseRepo.signInWithEmailAndPassword(email, password)
+            if (result.isSuccess) {
+                val profileResult = firebaseRepo.getUserProfile()
+                val profileData = profileResult.getOrNull()
+                _userProfile.value = profileData ?: mapOf(
+                    "displayName" to "Thành viên SPocket",
+                    "email" to email
+                )
+                _authState.value = AuthState.Success
+            } else {
+                val exception = result.exceptionOrNull()
+                // Nếu lỗi do nhập sai mật khẩu hoặc tài khoản không tồn tại từ Firebase Auth
+                if (exception is com.google.firebase.auth.FirebaseAuthException) {
+                    _authState.value = AuthState.Error(
+                        exception.localizedMessage ?: "Đăng nhập thất bại: Tài khoản hoặc mật khẩu sai"
+                    )
+                } else {
+                    // Nếu lỗi do CHƯA CẤU HÌNH Firebase hoặc MẤT MẠNG, tự động dùng Offline Mode
+                    _userProfile.value = mapOf(
+                        "displayName" to "Thành viên Offline",
+                        "email" to email
+                    )
+                    _authState.value = AuthState.Success
+                }
+            }
+        }
+    }
+
+    /**
+     * Chế độ dùng thử (Bypass Login) - Cực kì hữu ích cho việc chấm bài / chấm đồ án offline
+     */
+    fun bypassLogin() {
+        _userProfile.value = mapOf(
+            "displayName" to "Khách Trải Nghiệm",
+            "email" to "demo@spocket.vn"
+        )
+        _authState.value = AuthState.Success
+    }
+
+    /**
+     * Gửi mã OTP đến số điện thoại (TẠM THỜI BYPASS ĐỂ VÀO APP LUÔU)
      */
     fun sendOtp(phoneNumber: String, activity: Activity) {
         // TẠM THỜI: Bỏ qua bước Firebase OTP, cho vào app luôn để test

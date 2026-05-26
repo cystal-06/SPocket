@@ -18,7 +18,19 @@ import com.example.dacs3_nguyencongduc.ui.screens.MainScreen
 import com.example.dacs3_nguyencongduc.ui.screens.SplashScreen
 import com.example.dacs3_nguyencongduc.viewmodel.*
 
+import android.content.Intent
+import com.facebook.CallbackManager
+
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        var callbackManager: CallbackManager? = null
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        callbackManager?.onActivityResult(requestCode, resultCode, data)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Kích hoạt giao diện tràn viền và đặt màu thanh điều hướng thành đen

@@ -36,10 +36,10 @@ import java.util.*
 private val FILTER_LIST = listOf(
     "Tất cả" to Icons.Default.GridView,
     "Ăn uống" to Icons.Default.Restaurant,
-    "Đi lại" to Icons.Default.DirectionsCar,
     "Mua sắm" to Icons.Default.ShoppingBag,
     "Lương" to Icons.Default.AccountBalanceWallet,
-    "Giải trí" to Icons.Default.SportsEsports
+    "Thuê nhà" to Icons.Default.Home,
+    "Di chuyển" to Icons.Default.DirectionsCar
 )
 
 private val WEEKDAY_LABELS = listOf("T2", "T3", "T4", "T5", "T6", "T7", "CN")
@@ -50,11 +50,20 @@ private val MONTH_NAMES = listOf(
 )
 
 private fun getCategoryEmoji(cat: String) = when (cat) {
-    "Ăn uống" -> "🍜"
-    "Đi lại" -> "🚗"
-    "Mua sắm" -> "🛒"
-    "Giải trí" -> "🎮"
+    "Thuê nhà" -> "🏠"
+    "Hiếu hỉ" -> "❤️"
+    "Cafe" -> "☕"
+    "Ăn uống" -> "🥐"
+    "Đi chợ" -> "🥦"
+    "Điện/ Nước" -> "💡"
+    "Di chuyển" -> "🛵"
+    "Xăng" -> "⛽"
+    "Mua sắm" -> "🛍️"
+    "Shoppee/ Tiktok" -> "🛵"
+    "Du lịch" -> "🛫"
+    "Học tập" -> "📚"
     "Lương" -> "💰"
+    "Khác" -> "💵"
     else -> "📦"
 }
 

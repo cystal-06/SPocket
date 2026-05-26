@@ -2,12 +2,13 @@ package com.example.dacs3_nguyencongduc.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -30,12 +31,15 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.dacs3_nguyencongduc.ui.theme.LocketPurple
 import com.example.dacs3_nguyencongduc.utils.formatCurrency
 import java.text.SimpleDateFormat
 import java.util.*
+import android.widget.Toast
 
 /**
  * VisualTransformation để thêm dấu chấm ngăn cách hàng nghìn (chuẩn VN) khi nhập tiền
@@ -79,9 +83,37 @@ class ThousandSeparatorTransformation : VisualTransformation {
     }
 }
 
-private val DEFAULT_CATEGORIES = listOf(
-    "Ăn uống" to "🍜", "Đi lại" to "🚗", "Mua sắm" to "🛒",
-    "Giải trí" to "🎮", "Lương" to "💰", "Chung" to "📦"
+// Định nghĩa Cấu Trúc Nhóm Danh Mục Chi Tiêu chuẩn theo screenshot của USER
+data class CategoryItemInfo(val name: String, val emoji: String)
+data class CategoryGroup(val name: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val items: List<CategoryItemInfo>)
+
+val CATEGORY_GROUPS = listOf(
+    CategoryGroup("Cố định", Icons.Default.Home, listOf(
+        CategoryItemInfo("Thuê nhà", "🏠"),
+        CategoryItemInfo("Hiếu hỉ", "❤️")
+    )),
+    CategoryGroup("Nhu cầu thiết yếu", Icons.Default.ShoppingCart, listOf(
+        CategoryItemInfo("Cafe", "☕"),
+        CategoryItemInfo("Ăn uống", "🥐"),
+        CategoryItemInfo("Đi chợ", "🥦"),
+        CategoryItemInfo("Điện/ Nước", "💡"),
+        CategoryItemInfo("Di chuyển", "🛵"),
+        CategoryItemInfo("Xăng", "⛽")
+    )),
+    CategoryGroup("Hưởng thụ & Giải trí", Icons.Default.Waves, listOf(
+        CategoryItemInfo("Mua sắm", "🛍️"),
+        CategoryItemInfo("Shoppee/ Tiktok", "🛵"),
+        CategoryItemInfo("Du lịch", "🛫")
+    )),
+    CategoryGroup("Giáo dục", Icons.Default.MenuBook, listOf(
+        CategoryItemInfo("Học tập", "📚")
+    ))
+)
+
+// Danh mục dành riêng cho Thu Nhập (Thu)
+val INCOME_CATEGORIES = listOf(
+    CategoryItemInfo("Lương", "💰"),
+    CategoryItemInfo("Khác", "💵")
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,10 +127,11 @@ fun SaveTransactionScreen(
     var title by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var transactionType by remember { mutableStateOf("CHI") }
-    var selectedCategory by remember { mutableStateOf("Chung") }
+    var selectedCategory by remember { mutableStateOf("Ăn uống") }
+    var selectedEmoji by remember { mutableStateOf("🥐") }
     var selectedDate by remember { mutableStateOf(System.currentTimeMillis()) }
     var showDatePicker by remember { mutableStateOf(false) }
-
+    var showCategoryDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(imageSource) {
         val scanner = com.example.dacs3_nguyencongduc.utils.BillScanner
@@ -126,6 +159,21 @@ fun SaveTransactionScreen(
         ) { DatePicker(state) }
     }
 
+    // Hiển thị Dialog chọn danh mục chuẩn 100% của USER
+    if (showCategoryDialog) {
+        CategorySelectionDialog(
+            currentSelected = selectedCategory,
+            currentEmoji = selectedEmoji,
+            transactionType = transactionType,
+            onDismiss = { showCategoryDialog = false },
+            onConfirmed = { cat, emoji ->
+                selectedCategory = cat
+                selectedEmoji = emoji
+                showCategoryDialog = false
+            }
+        )
+    }
+
     Box(
         modifier = Modifier.fillMaxSize().background(Color(0xFF0D0D0D))
             .statusBarsPadding().navigationBarsPadding()
@@ -137,10 +185,26 @@ fun SaveTransactionScreen(
             // Top Bar
             SaveScreenTopBar(onCancel = onCancel)
             // Image + Toggle
-            ImageCardWithToggle(imageSource, transactionType) { transactionType = it }
+            ImageCardWithToggle(imageSource, transactionType) { type ->
+                transactionType = type
+                // Tự chọn mặc định tương ứng với loại GD khi đổi toggle
+                if (type == "CHI") {
+                    selectedCategory = "Ăn uống"
+                    selectedEmoji = "🥐"
+                } else {
+                    selectedCategory = "Lương"
+                    selectedEmoji = "💰"
+                }
+            }
             Spacer(modifier = Modifier.height(16.dp))
-            // Categories + Date
-            CategoryAndDateRow(selectedCategory, { selectedCategory = it }, selectedDate) { showDatePicker = true }
+            // Categories + Date (Mới: Bấm chọn danh mục sẽ mở cửa sổ popup)
+            CategoryAndDateRow(
+                selectedCategory = selectedCategory,
+                selectedEmoji = selectedEmoji,
+                onCategoryClick = { showCategoryDialog = true },
+                selectedDate = selectedDate,
+                onDateClick = { showDatePicker = true }
+            )
             Spacer(modifier = Modifier.height(24.dp))
             // Amount
             AmountInput(amount, { if (it.all { c -> c.isDigit() }) amount = it }, transactionType)
@@ -203,29 +267,275 @@ private fun TransactionTypeToggle(transactionType: String, onTypeChanged: (Strin
 }
 
 @Composable
-private fun CategoryAndDateRow(selectedCategory: String, onCategorySelected: (String) -> Unit, selectedDate: Long, onDateClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(DEFAULT_CATEGORIES) { (cat, emoji) ->
-                Surface(
-                    onClick = { onCategorySelected(cat) },
-                    color = if (selectedCategory == cat) LocketPurple.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.08f),
-                    shape = RoundedCornerShape(20.dp), modifier = Modifier.height(38.dp),
-                    border = if (selectedCategory == cat) null else BorderStroke(0.5.dp, Color.White.copy(alpha = 0.12f))
+private fun CategoryAndDateRow(
+    selectedCategory: String,
+    selectedEmoji: String,
+    onCategoryClick: () -> Unit,
+    selectedDate: Long,
+    onDateClick: () -> Unit
+) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        // Pill Button hiển thị danh mục đã chọn & cho phép click để mở popup
+        Surface(
+            onClick = onCategoryClick,
+            color = LocketPurple,
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.height(40.dp)
+        ) {
+            Row(
+                Modifier.padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(selectedEmoji, fontSize = 15.sp)
+                Text(selectedCategory, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Icon(Icons.Default.ArrowDropDown, null, tint = Color.White, modifier = Modifier.size(18.dp))
+            }
+        }
+
+        Surface(
+            onClick = onDateClick,
+            color = Color.White.copy(alpha = 0.08f),
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.height(40.dp),
+            border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.12f))
+        ) {
+            Row(
+                Modifier.padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(Icons.Default.CalendarToday, null, tint = LocketPurple, modifier = Modifier.size(14.dp))
+                Text(SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(selectedDate)), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+fun CategorySelectionDialog(
+    currentSelected: String,
+    currentEmoji: String,
+    transactionType: String,
+    onDismiss: () -> Unit,
+    onConfirmed: (String, String) -> Unit
+) {
+    var tempSelectedCategory by remember { mutableStateOf(currentSelected) }
+    var tempSelectedEmoji by remember { mutableStateOf(currentEmoji) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF0F0F11))
+                .statusBarsPadding()
+                .navigationBarsPadding()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 18.dp)
+            ) {
+                // ── Top Bar ──
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(Modifier.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Text(emoji, fontSize = 14.sp)
-                        Text(cat, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    IconButton(onClick = onDismiss) {
+                        Box(
+                            Modifier
+                                .size(40.dp)
+                                .background(Color.White.copy(alpha = 0.08f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
                     }
+
+                    Text(
+                        "Danh mục chi tiêu",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    IconButton(
+                        onClick = { onConfirmed(tempSelectedCategory, tempSelectedEmoji) }
+                    ) {
+                        Box(
+                            Modifier
+                                .size(40.dp)
+                                .background(LocketPurple, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                }
+
+                // ── Danh sách các Hạng mục chuẩn ──
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    if (transactionType == "CHI") {
+                        // Hiện toàn bộ nhóm chi tiêu
+                        CATEGORY_GROUPS.forEach { group ->
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = group.icon,
+                                        contentDescription = null,
+                                        tint = Color.Gray,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        text = group.name,
+                                        color = Color.Gray,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                // Layout thủ công cực kỳ ổn định, khớp 100% với ảnh mẫu của USER mà không sợ crash FlowRow ở runtime
+                                val rows = when (group.name) {
+                                    "Cố định" -> group.items.chunked(2)
+                                    "Nhu cầu thiết yếu" -> listOf(
+                                        group.items.take(3),
+                                        group.items.drop(3).take(2),
+                                        group.items.drop(5)
+                                    ).filter { it.isNotEmpty() }
+                                    "Hưởng thụ & Giải trí" -> listOf(
+                                        group.items.take(2),
+                                        group.items.drop(2)
+                                    ).filter { it.isNotEmpty() }
+                                    else -> group.items.chunked(2)
+                                }
+
+                                rows.forEach { rowItems ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        rowItems.forEach { item ->
+                                            val isSel = tempSelectedCategory == item.name
+                                            CategoryChip(
+                                                name = item.name,
+                                                emoji = item.emoji,
+                                                isSelected = isSel,
+                                                onClick = {
+                                                    tempSelectedCategory = item.name
+                                                    tempSelectedEmoji = item.emoji
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Chỉ hiện nhóm thu nhập (Khoản thu)
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AccountBalanceWallet,
+                                    contentDescription = null,
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "Nguồn thu nhập",
+                                    color = Color.Gray,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            val rows = INCOME_CATEGORIES.chunked(2)
+                            rows.forEach { rowItems ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    rowItems.forEach { item ->
+                                        val isSel = tempSelectedCategory == item.name
+                                        CategoryChip(
+                                            name = item.name,
+                                            emoji = item.emoji,
+                                            isSelected = isSel,
+                                            onClick = {
+                                                tempSelectedCategory = item.name
+                                                tempSelectedEmoji = item.emoji
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── Nút tạo mới ở phía dưới ──
+                val context = LocalContext.current
+                Button(
+                    onClick = {
+                        Toast.makeText(context, "Tính năng tạo danh mục mới đang được phát triển!", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 24.dp)
+                        .height(50.dp),
+                    shape = RoundedCornerShape(25.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = LocketPurple.copy(alpha = 0.12f),
+                        contentColor = LocketPurple
+                    )
+                ) {
+                    Text("+ Tạo mới", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
-        Spacer(Modifier.width(10.dp))
-        Surface(onClick = onDateClick, color = Color.White.copy(alpha = 0.08f), shape = RoundedCornerShape(20.dp), modifier = Modifier.height(38.dp), border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.12f))) {
-            Row(Modifier.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Default.CalendarToday, null, tint = LocketPurple, modifier = Modifier.size(15.dp))
-                Text(SimpleDateFormat("dd/MM", Locale.getDefault()).format(Date(selectedDate)), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            }
+    }
+}
+
+@Composable
+fun CategoryChip(
+    name: String,
+    emoji: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        color = if (isSelected) LocketPurple.copy(alpha = 0.25f) else Color(0xFF1E1E22),
+        shape = RoundedCornerShape(20.dp),
+        border = if (isSelected) BorderStroke(1.dp, LocketPurple) else null,
+        modifier = Modifier.height(40.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(emoji, fontSize = 14.sp)
+            Text(name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
         }
     }
 }

@@ -33,6 +33,38 @@ class FirebaseRepository {
     val isLoggedIn: Boolean get() = auth.currentUser != null
 
     // ══════════════════════════════════════════════
+    // AUTH - Đăng ký & Đăng nhập bằng Email và Password
+    // ══════════════════════════════════════════════
+
+    /**
+     * Đăng ký tài khoản mới bằng Email và Mật khẩu
+     */
+    suspend fun signUpWithEmailAndPassword(email: String, password: String, displayName: String): Result<String> {
+        return try {
+            val result = auth.createUserWithEmailAndPassword(email, password).await()
+            val uid = result.user?.uid ?: throw Exception("Không tạo được tài khoản")
+            // Cập nhật Profile trong Firestore sau khi tạo xong tài khoản
+            createOrUpdateUser(displayName = displayName)
+            Result.success(uid)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Đăng nhập bằng Email và Mật khẩu
+     */
+    suspend fun signInWithEmailAndPassword(email: String, password: String): Result<String> {
+        return try {
+            val result = auth.signInWithEmailAndPassword(email, password).await()
+            val uid = result.user?.uid ?: throw Exception("Sai thông tin đăng nhập")
+            Result.success(uid)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // ══════════════════════════════════════════════
     // AUTH - Đăng nhập bằng số điện thoại (Phone OTP)
     // ══════════════════════════════════════════════
 
@@ -105,6 +137,20 @@ class FirebaseRepository {
             )
             usersCollection.document(uid).set(userData).await()
             Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Lấy hồ sơ thông tin người dùng từ Firestore
+     */
+    suspend fun getUserProfile(): Result<Map<String, Any>?> {
+        return try {
+            val uid = currentUserId
+            if (uid.isEmpty()) return Result.success(null)
+            val doc = usersCollection.document(uid).get().await()
+            Result.success(doc.data)
         } catch (e: Exception) {
             Result.failure(e)
         }

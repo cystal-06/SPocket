@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">SPocket</string>
+    
+    <!-- Firebase Web Client ID for Google Sign-In (Thay thế bằng Web Client ID thật từ Firebase Console của bạn) -->
+    <string name="default_web_client_id">318244119782-nbgaqm8sf9hk8q4ei3uf1td85bq332nn.apps.googleusercontent.com
+</string>
+    
+    <!-- Facebook Application Configuration (Thay thế bằng App ID thật từ Facebook Developers) -->
+    <string name="facebook_app_id">YOUR_FACEBOOK_APP_ID</string>
+    <string name="fb_login_protocol_scheme">fbYOUR_FACEBOOK_APP_ID</string>
 </resources>

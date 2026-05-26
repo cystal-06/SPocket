@@ -32,8 +32,21 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 private fun catEmoji(cat: String) = when (cat) {
-    "Ăn uống" -> "🍜"; "Đi lại" -> "🚗"; "Mua sắm" -> "🛒"
-    "Giải trí" -> "🎮"; "Lương" -> "💰"; else -> "📦"
+    "Thuê nhà" -> "🏠"
+    "Hiếu hỉ" -> "❤️"
+    "Cafe" -> "☕"
+    "Ăn uống" -> "🥐"
+    "Đi chợ" -> "🥦"
+    "Điện/ Nước" -> "💡"
+    "Di chuyển" -> "🛵"
+    "Xăng" -> "⛽"
+    "Mua sắm" -> "🛍️"
+    "Shoppee/ Tiktok" -> "🛵"
+    "Du lịch" -> "🛫"
+    "Học tập" -> "📚"
+    "Lương" -> "💰"
+    "Khác" -> "💵"
+    else -> "📦"
 }
 
 /**

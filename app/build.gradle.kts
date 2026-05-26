@@ -70,14 +70,23 @@ dependencies {
     // Coil for Image Loading
     implementation("io.coil-kt:coil-compose:2.6.0")
 
-    // ── Firebase ──
+    // ── Firebase & Auth ──
     implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-firestore-ktx") // Để làm database chi tiêu
-    implementation("com.google.firebase:firebase-auth-ktx")     // Cloud Storage
+    implementation("com.google.firebase:firebase-auth-ktx")     // Firebase Auth
+    
+    // Google Sign-In
+    implementation("com.google.android.gms:play-services-auth:21.1.0")
+    
+    // Facebook Login
+    implementation("com.facebook.android:facebook-login:16.3.0")
 
     // Coroutines support for Firebase
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+
+    // ML Kit Text Recognition (AI Scan Bill)
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
